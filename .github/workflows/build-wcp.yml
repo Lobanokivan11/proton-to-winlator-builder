@@ -37,7 +37,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "PROTON_VERSION=$VERSION" >> "$GITHUB_ENV"
-  
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -97,7 +97,6 @@ jobs:
             "wine_version": "proton-${{ env.PROTON_DISPLAY_VERSION }}"
           }
           EOF
-          
           # profile.json
           cat > ~/wcp_output/profile.json << EOF
           {
@@ -122,16 +121,22 @@ jobs:
         run: |
           PREFIX_SRC="$HOME/proton_download/files/share/default_pfx"
           PREFIX_OUT="$HOME/wcp_output/prefixPack.txz"
+          TMP_DIR=$(mktemp -d)
           mkdir -p "$(dirname "$PREFIX_OUT")"
-          if [ -d "$PREFIX_SRC" ] && [ "$(ls -A "$PREFIX_SRC")" ]; then
-            echo "Source found, packing..."
-            tar -chJf "$PREFIX_OUT" --transform 's,^\./,.wine/,' -C "$PREFIX_SRC" .
+          if [ -d "$PREFIX_SRC" ]; then
+            echo "Source found, preparing structure..."
+            mkdir -p "$TMP_DIR/.wine"
+            cp -as "$PREFIX_SRC/." "$TMP_DIR/.wine/"
+            echo "Packing into .txz..."
+            tar -chJf "$PREFIX_OUT" -C "$TMP_DIR" .wine
+            rm -rf "$TMP_DIR"
           else
-            echo "Source NOT found or empty, creating empty archive..."
+            echo "Source NOT found, creating empty archive..."
             tar -cJf "$PREFIX_OUT" --files-from /dev/null
           fi
-          echo "=== Generated PrefixPack.txz ==="
+          echo "=== Generated PrefixPack.txz for Winlator ==="
           ls -lh "$PREFIX_OUT"
+          tar -tf "$PREFIX_OUT" | head -n 5
 
       - name: Create WCP archive
         run: |
@@ -142,7 +147,6 @@ jobs:
           if [ "$CURRENT_DIR" != "$WORKSPACE_DIR" ]; then
             mv "$ARCHIVE_NAME" "$WORKSPACE_DIR/"
           fi
-          
           echo "=== WCP archive ready at $WORKSPACE_DIR/$ARCHIVE_NAME ==="
 
       - name: Validate WCP with Integration Test
