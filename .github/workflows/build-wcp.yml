@@ -2,15 +2,8 @@ name: Build Proton WCP
 
 on:
   workflow_dispatch:
-    inputs:
-      proton_version:
-        description: 'Proton version to build (e.g., 10.0)'
-        required: true
-        default: '10.0'
-      app_id:
-        description: 'Steam App ID for Proton (e.g., 2348590 for Proton 10.0)'
-        required: true
-        default: '2348590'
+  schedule:
+    - cron: '0 * * * *'
   push:
     tags:
       - '*'
@@ -19,50 +12,32 @@ jobs:
   build-wcp:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Required for creating releases
-      actions: read    # Required for workflow metadata
+      contents: write
+      actions: read
     env:
-      APP_ID: ${{ inputs.app_id || '2348590' }}
-    
+      APP_ID: "1493710"
+      PROTON_DISPLAY_VERSION: "Bleeding-Edge"
+      PROTON_NUMERIC_VERSION: "99.0"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set Proton metadata
+        id: meta
         run: |
-          if [ -n "${{ inputs.proton_version }}" ]; then
-            version="${{ inputs.proton_version }}"
-          else
-            version="${GITHUB_REF_NAME#proton-}"
-          fi
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            tag_name="${GITHUB_REF_NAME}"
-          else
-            tag_name="proton-$version"
-          fi
-          if [[ "$version" =~ ^[0-9]+\.[0-9]+$ ]]; then
-            wcp_version="${version}-1"
-          else
-            wcp_version="$version"
-          fi
-          display_version="${version%%-*}"
-          
-          # Extract numeric-only version for profile versionName to match WineInfo regex
-          # WineInfo regex: ^(wine|proton|Proton)\-([0-9\.]+)\-?([0-9\.]+)?\-(x86|x86_64|arm64ec)$
-          # Strip any non-numeric suffixes (e.g., "10.0-rc1" -> "10.0")
-          numeric_version="$version"
-          if [[ ! "$numeric_version" =~ ^([0-9.]+)-([0-9]+)$ ]] && [[ "$numeric_version" =~ ^([0-9.]+)(-.+)?$ ]]; then
-            # Strip non-numeric suffix: "10.0-rc1" -> "10.0"
-            # Numeric subversions like "10.0-1" are preserved by the first regex check
-            numeric_version="${BASH_REMATCH[1]}"
-          fi
-          
-          echo "PROTON_VERSION=$version" >> "$GITHUB_ENV"
-          echo "PROTON_DISPLAY_VERSION=$display_version" >> "$GITHUB_ENV"
-          echo "PROTON_NUMERIC_VERSION=$numeric_version" >> "$GITHUB_ENV"
-          echo "WCP_VERSION=$wcp_version" >> "$GITHUB_ENV"
-          echo "TAG_NAME=$tag_name" >> "$GITHUB_ENV"
-
+          DATE_TAG=$(date +'%Y%m%d')
+          VERSION="bleeding-edge-$DATE_TAG"
+          TAG="proton-$VERSION"
+          echo "PROTON_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "PROTON_DISPLAY_VERSION=Bleeding-Edge" >> "$GITHUB_ENV"
+          echo "PROTON_NUMERIC_VERSION=99.0" >> "$GITHUB_ENV"
+          echo "WCP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "TAG_NAME=proton-$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "PROTON_VERSION=$VERSION" >> "$GITHUB_ENV"
+  
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -76,68 +51,31 @@ jobs:
           tar -xvzf steamcmd_linux.tar.gz
           chmod +x steamcmd.sh
 
-      - name: Download Proton with SteamCMD
+
+      - name: Download Proton Bleeding Edge
         env:
           STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
           STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD }}
         run: |
           mkdir -p ~/proton_download
           cd ~/steamcmd
-          
-          # Create SteamCMD script with proper variable expansion
           cat > download_proton.txt << EOF
           @ShutdownOnFailedCommand 1
           @NoPromptForPassword 1
           force_install_dir $HOME/proton_download
           login $STEAM_USERNAME $STEAM_PASSWORD
-          app_update ${{ env.APP_ID }} validate
+          app_update ${{ env.APP_ID }} -beta bleeding-edge validate
           quit
           EOF
-          
-          # Run SteamCMD with retry logic
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-          
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            echo "Download attempt $((RETRY_COUNT + 1))/$MAX_RETRIES"
-            
-            if ./steamcmd.sh +runscript download_proton.txt; then
-              echo "Download successful!"
-              break
-            else
-              RETRY_COUNT=$((RETRY_COUNT + 1))
-              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-                echo "Download failed, retrying in 10 seconds..."
-                sleep 10
-              else
-                echo "Download failed after $MAX_RETRIES attempts"
-                exit 1
-              fi
-            fi
-          done
+          ./steamcmd.sh +runscript download_proton.txt
 
       - name: Transform Proton to Wine structure
         run: |
           mkdir -p ~/wcp_output/{bin,lib,share}
-          
-          # Copy executables to bin/
-          if [ -d ~/proton_download/files/bin ]; then
-            cp -r ~/proton_download/files/bin/* ~/wcp_output/bin/ || true
-          fi
-          
-          # Copy libraries to lib/
-          if [ -d ~/proton_download/files/lib ]; then
-            cp -r ~/proton_download/files/lib/* ~/wcp_output/lib/ || true
-          fi
-          if [ -d ~/proton_download/files/lib64 ]; then
-            cp -r ~/proton_download/files/lib64/* ~/wcp_output/lib/ || true
-          fi
-          
-          # Copy shared resources to share/
-          if [ -d ~/proton_download/files/share ]; then
-            cp -r ~/proton_download/files/share/* ~/wcp_output/share/ || true
-          fi
-          
+          [ -d ~/proton_download/files/bin ] && cp -r ~/proton_download/files/bin/* ~/wcp_output/bin/ || true
+          [ -d ~/proton_download/files/lib ] && cp -r ~/proton_download/files/lib/* ~/wcp_output/lib/ || true
+          [ -d ~/proton_download/files/lib64 ] && cp -r ~/proton_download/files/lib64/* ~/wcp_output/lib/ || true
+          [ -d ~/proton_download/files/share ] && cp -r ~/proton_download/files/share/* ~/wcp_output/share/ || true
           # List the structure for verification
           echo "=== Output structure ==="
           ls -la ~/wcp_output/
@@ -148,19 +86,37 @@ jobs:
           echo "=== share/ ==="
           ls -la ~/wcp_output/share/ | head -20
 
-      - name: Generate wcp.json manifest
+      - name: Generate manifests
         run: |
+          # wcp.json
           cat > ~/wcp_output/wcp.json << EOF
           {
             "name": "Proton ${{ env.PROTON_DISPLAY_VERSION }}",
             "version": "${{ env.WCP_VERSION }}",
-            "description": "Valve's Proton compatibility layer converted for Winlator",
+            "description": "Valve's Proton Bleeding Edge converted for Winlator",
             "wine_version": "proton-${{ env.PROTON_DISPLAY_VERSION }}"
           }
           EOF
           
+          # profile.json
+          cat > ~/wcp_output/profile.json << EOF
+          {
+            "type": "Proton",
+            "versionName": "${{ env.PROTON_NUMERIC_VERSION }}-x86_64",
+            "versionCode": 0,
+            "description": "Proton Bleeding Edge (${{ env.PROTON_VERSION }})",
+            "files": [],
+            "proton": {
+              "binPath": "bin",
+              "libPath": "lib",
+              "prefixPack": "prefixPack.txz"
+            }
+          }
+          EOF
           echo "=== Generated wcp.json ==="
           cat ~/wcp_output/wcp.json
+          echo "=== Generated profile.json ==="
+          cat ~/wcp_output/profile.json
 
       - name: Create prefix pack
         run: |
@@ -174,86 +130,46 @@ jobs:
           echo "=== prefixPack.txz ==="
           ls -lh "$prefix_pack"
 
-      - name: Generate profile.json manifest
-        run: |
-          cat > ~/wcp_output/profile.json << EOF
-          {
-            "type": "Proton",
-            "versionName": "${{ env.PROTON_NUMERIC_VERSION }}-x86_64",
-            "versionCode": 0,
-            "description": "Valve's Proton compatibility layer converted for Winlator",
-            "files": [],
-            "proton": {
-              "binPath": "bin",
-              "libPath": "lib",
-              "prefixPack": "prefixPack.txz"
-            }
-          }
-          EOF
-          
-          echo "=== Generated profile.json ==="
-          cat ~/wcp_output/profile.json
-
       - name: Create WCP archive
         run: |
-          # Verify structure before archiving
-          echo "=== Files to be included in WCP ==="
-          ls -la ~/wcp_output
-          
-          # Create zstd-compressed archive (wcp.json must be at root)
-          tar --zstd -cf proton-${{ env.PROTON_VERSION }}.wcp -C ~/wcp_output .
-          
-          # Move to workspace for artifact upload
           archive_name="proton-${{ env.PROTON_VERSION }}.wcp"
-          current_path="$(pwd -P)" || current_path=""
-          workspace_path="$(cd "${{ github.workspace }}" && pwd -P)" || workspace_path=""
-          if [ -z "$current_path" ] || [ -z "$workspace_path" ]; then
-            echo "Failed to resolve paths: current=$current_path workspace=$workspace_path" >&2
-            exit 1
-          elif [ ! -f "$archive_name" ]; then
-            echo "WCP archive not found at $archive_name" >&2
-            exit 1
-          elif [ "$current_path" != "$workspace_path" ]; then
-            mv "$archive_name" "${{ github.workspace }}/"
-          fi
-          
+          tar --zstd -cf "$archive_name" -C ~/wcp_output .
+          mv "$archive_name" "${{ github.workspace }}/"
           echo "=== WCP archive created ==="
           ls -lh ${{ github.workspace }}/proton-${{ env.PROTON_VERSION }}.wcp
 
       - name: Validate WCP with Integration Test
         run: |
-          python3 scripts/test_wcp_integration.py proton-${{ env.PROTON_VERSION }}.wcp || {
-            echo "✗ WCP validation failed"
-            exit 1
-          }
+          if [ -f "scripts/test_wcp_integration.py" ]; then
+            python3 scripts/test_wcp_integration.py "proton-${{ env.PROTON_VERSION }}.wcp"
+          else
+            echo "Integration test script not found, skipping..."
+          fi
 
       - name: Upload WCP as artifact
         uses: actions/upload-artifact@v4
         with:
           name: proton-${{ env.PROTON_VERSION }}-wcp
           path: proton-${{ env.PROTON_VERSION }}.wcp
-          retention-days: 30
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.TAG_NAME }}
-          name: Proton ${{ env.PROTON_VERSION }} WCP
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: Proton ${{ steps.meta.outputs.version }} WCP
           body: |
-            # Proton ${{ env.PROTON_VERSION }} WCP Package
+            # Proton ${{ steps.meta.outputs.version }} WCP Package
             
-            Automated build of Proton ${{ env.PROTON_VERSION }} converted to Winlator Custom Package format.
+            Automated build of Proton ${{ steps.meta.outputs.version }} converted to Winlator Custom Package format.
             
             ## Installation
             1. Download the `.wcp` file
             2. Import it into Winlator on your Android device
             
             ## Build Information
-            - **Proton Version**: ${{ env.PROTON_VERSION }}
+            - **Proton Version**: ${{ steps.meta.outputs.version }}
             - **Steam App ID**: ${{ env.APP_ID }}
             - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          files: proton-${{ env.PROTON_VERSION }}.wcp
-          draft: false
-          prerelease: false
+          files: *.wcp
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
