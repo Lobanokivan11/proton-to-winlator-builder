@@ -158,17 +158,9 @@ jobs:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: Proton ${{ steps.meta.outputs.version }} WCP
           body: |
-            # Proton ${{ steps.meta.outputs.version }} WCP Package
-            
-            Automated build of Proton ${{ steps.meta.outputs.version }} converted to Winlator Custom Package format.
-            
-            ## Installation
-            1. Download the `.wcp` file
-            2. Import it into Winlator on your Android device
-            
-            ## Build Information
-            - Version: ${{ steps.meta.outputs.version }}
-            - AppID: ${{ env.APP_ID }}
+            # Proton Bleeding Edge WCP
+            - **VERSION**: ${{ steps.meta.outputs.version }}
+            - **AppID**: ${{ env.APP_ID }}
           files: *.wcp
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
