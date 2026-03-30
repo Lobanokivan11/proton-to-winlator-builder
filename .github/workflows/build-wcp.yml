@@ -167,9 +167,8 @@ jobs:
             2. Import it into Winlator on your Android device
             
             ## Build Information
-            - **Proton Version**: ${{ steps.meta.outputs.version }}
-            - **Steam App ID**: ${{ env.APP_ID }}
-            - **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - Version: ${{ steps.meta.outputs.version }}
+            - AppID: ${{ env.APP_ID }}
           files: *.wcp
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
