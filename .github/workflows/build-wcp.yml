@@ -125,7 +125,7 @@ jobs:
           mkdir -p "$(dirname "$PREFIX_OUT")"
           if [ -d "$PREFIX_SRC" ] && [ "$(ls -A "$PREFIX_SRC")" ]; then
             echo "Source found, packing..."
-            tar -cJf "$PREFIX_OUT" --transform 's,^\./,.wine/,' -C "$PREFIX_SRC" .
+            tar -chJf "$PREFIX_OUT" --transform 's,^\./,.wine/,' -C "$PREFIX_SRC" .
           else
             echo "Source NOT found or empty, creating empty archive..."
             tar -cJf "$PREFIX_OUT" --files-from /dev/null
