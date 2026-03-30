@@ -118,7 +118,7 @@ jobs:
           echo "=== Generated profile.json ==="
           cat ~/wcp_output/profile.json
 
-      -       - name: Create prefix pack
+      - name: Create prefix pack
         run: |
           PREFIX_SRC="$HOME/proton_download/files/share/default_pfx"
           PREFIX_OUT="$HOME/wcp_output/prefixPack.txz"
