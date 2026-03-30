@@ -161,6 +161,6 @@ jobs:
             # Proton Bleeding Edge WCP
             - **VERSION**: ${{ steps.meta.outputs.version }}
             - **AppID**: ${{ env.APP_ID }}
-          files: *.wcp
+          files: "*.wcp"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
