@@ -6,7 +6,7 @@ on:
     - cron: '0 * * * *'
   push:
     tags:
-      - '*'
+      - main
 
 jobs:
   build-wcp:
@@ -132,11 +132,15 @@ jobs:
 
       - name: Create WCP archive
         run: |
-          archive_name="proton-${{ env.PROTON_VERSION }}.wcp"
-          tar --zstd -cf "$archive_name" -C ~/wcp_output .
-          mv "$archive_name" "${{ github.workspace }}/"
-          echo "=== WCP archive created ==="
-          ls -lh ${{ github.workspace }}/proton-${{ env.PROTON_VERSION }}.wcp
+          ARCHIVE_NAME="proton-${{ steps.meta.outputs.version }}.wcp"
+          tar --zstd -cf "$ARCHIVE_NAME" -C ~/wcp_output .
+          CURRENT_DIR=$(pwd)
+          WORKSPACE_DIR="${{ github.workspace }}"
+          if [ "$CURRENT_DIR" != "$WORKSPACE_DIR" ]; then
+            mv "$ARCHIVE_NAME" "$WORKSPACE_DIR/"
+          fi
+          
+          echo "=== WCP archive ready at $WORKSPACE_DIR/$ARCHIVE_NAME ==="
 
       - name: Validate WCP with Integration Test
         run: |
