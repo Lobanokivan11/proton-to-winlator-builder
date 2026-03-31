@@ -87,6 +87,14 @@ jobs:
           [ -d ~/proton_download/files/lib ] && cp -r ~/proton_download/files/lib/* ~/wcp_output/lib/ || true
           [ -d ~/proton_download/files/lib64 ] && cp -r ~/proton_download/files/lib64/* ~/wcp_output/lib/ || true
           [ -d ~/proton_download/files/share ] && cp -r ~/proton_download/files/share/* ~/wcp_output/share/ || true
+          cd ~/wcp_output/bin/
+          if [ -f "wine64" ]; then
+            echo "Replacing 32-bit wine with 64-bit wine64 for Box64 compatibility"
+            rm -f wine
+            rm -f wine-preloader
+            cp wine64 wine
+            cp wine64-preloader wine-preloader
+          fi
           # List the structure for verification
           echo "=== Output structure ==="
           ls -la ~/wcp_output/
