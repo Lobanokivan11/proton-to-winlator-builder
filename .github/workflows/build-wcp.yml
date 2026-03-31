@@ -136,6 +136,18 @@ jobs:
           echo "=== Generated profile.json ==="
           cat ~/wcp_output/profile.json
 
+      - name: Check prefix size before packing
+        run: |
+          PREFIX_SRC="$HOME/proton_download/files/share/default_pfx"
+          if [ -d "$PREFIX_SRC" ]; then
+            echo "=== Real size of prefix (dereferenced) ==="
+            du -shL "$PREFIX_SRC"
+            echo "=== Top 10 largest files/dirs in prefix ==="
+            du -ahL "$PREFIX_SRC" | sort -rh | head -n 10
+          else
+            echo "Prefix source not found!"
+          fi
+
       - name: Create prefix pack
         run: |
           PREFIX_SRC="$HOME/proton_download/files/share/default_pfx"
