@@ -140,22 +140,16 @@ jobs:
         run: |
           PREFIX_SRC="$HOME/proton_download/files/share/default_pfx"
           PREFIX_OUT="$HOME/wcp_output/prefixPack.txz"
-          TMP_DIR=$(mktemp -d)
-          mkdir -p "$(dirname "$PREFIX_OUT")"
+          
           if [ -d "$PREFIX_SRC" ]; then
-            echo "Source found, preparing structure..."
-            mkdir -p "$TMP_DIR/.wine"
-            cp -as "$PREFIX_SRC/." "$TMP_DIR/.wine/"
-            echo "Packing into .txz..."
-            tar -chJf "$PREFIX_OUT" -C "$TMP_DIR" .wine
-            rm -rf "$TMP_DIR"
+            echo "Source found, Packing txz"
+            tar -chJf "$PREFIX_OUT" -C "$PREFIX_SRC" --transform 's|^\.|.wine|' .
           else
             echo "Source NOT found, creating empty archive..."
             tar -cJf "$PREFIX_OUT" --files-from /dev/null
           fi
-          echo "=== Generated PrefixPack.txz for Winlator ==="
+          echo "=== Generated PrefixPack.txz ==="
           ls -lh "$PREFIX_OUT"
-          tar -tf "$PREFIX_OUT" | head -n 5
 
       - name: Create WCP archive
         run: |
