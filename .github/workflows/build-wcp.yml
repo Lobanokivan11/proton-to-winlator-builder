@@ -105,18 +105,21 @@ jobs:
           echo "=== share/ ==="
           ls -la ~/wcp_output/share/ | head -20
 
-      - name: Generate manifests
+      - name: Generate unified manifests
         run: |
-          # wcp.json
+          # wcp.json (compatible with both)
           cat > ~/wcp_output/wcp.json << EOF
           {
-            "name": "Proton ${{ env.PROTON_DISPLAY_VERSION }}",
+            "name": "Proton ${{ env.PROTON_DISPLAY_VERSION }} (Winlator & GameNative)",
             "version": "${{ env.WCP_VERSION }}",
-            "description": "Valve's Proton Bleeding Edge converted for Winlator",
-            "wine_version": "proton-${{ env.PROTON_DISPLAY_VERSION }}"
+            "description": "Valve's Proton Bleeding Edge optimized for Winlator and GameNative",
+            "wine_version": "proton-${{ env.PROTON_DISPLAY_VERSION }}",
+            "type": "proton",
+            "arch": "x86_64",
+            "prefix": "prefixPack.txz"
           }
           EOF
-          # profile.json
+          # profile.json (Winlator-specific)
           cat > ~/wcp_output/profile.json << EOF
           {
             "type": "Proton",
@@ -131,6 +134,7 @@ jobs:
             }
           }
           EOF
+
           echo "=== Generated wcp.json ==="
           cat ~/wcp_output/wcp.json
           echo "=== Generated profile.json ==="
@@ -192,11 +196,12 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
-          name: Proton ${{ steps.meta.outputs.version }} WCP
+          name: Proton ${{ steps.meta.outputs.version }} WCP (Winlator & GameNative)
           body: |
             # Proton Bleeding Edge WCP
             - **VERSION**: ${{ steps.meta.outputs.version }}
             - **AppID**: ${{ env.APP_ID }}
+            - **Compatibility**: Winlator (Bionic) & GameNative
           files: "*.wcp"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
